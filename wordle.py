@@ -14,7 +14,7 @@ list_valid_guesses = sorted(valid_guesses)
 answer = "adieu"
 guessed_words = []
 
-def get_input() -> str:
+def get_input(list_valid_guesses : list[str], guessed_words : list[str]) -> str:
     valid = False
 
     while not valid:
@@ -56,7 +56,7 @@ def main():
     answer_stack = ""
 
     while True:
-        guess = get_input()
+        guess = get_input(list_valid_guesses, guessed_words)
         answer_stack += check_guess(guess, answer)
         answer_stack += "\n"
         if guess == answer:
