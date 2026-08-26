@@ -1,4 +1,10 @@
 import sys
+from collections import Counter
+
+GREEN = "🟩"
+BLACK = "⬛"
+YELLOW = "🟨"
+
 
 with open('word_list.txt') as file:
     valid_guesses = [line.strip() for line in file]
@@ -25,16 +31,19 @@ def get_input() -> str:
     return guess
 
 
-def check_guess(guess: str) -> str: 
-    hint_string = ""
+def check_guess(guess: str, answer: str) -> str: 
+    marked = [BLACK] * 5
+    remaining = Counter(answer)
     for i, c in enumerate(guess):
-        if c == answer[i]:  
-            hint_string += "🟩"
-        elif c in answer:
-            hint_string += "🟨"
-        else:
-            hint_string += "⬛"
-    return hint_string
+        if c == answer[i]:
+            marked[i] = GREEN
+            remaining[c] -= 1
+
+    for i, c in enumerate(guess):
+        if marked[i] == BLACK and remaining[c] > 0:  
+            marked[i] = YELLOW
+            remaining[c] -= 1
+    return "".join(marked)
 
 
 
@@ -48,7 +57,7 @@ def main():
 
     while True:
         guess = get_input()
-        answer_stack += check_guess(guess)
+        answer_stack += check_guess(guess, answer)
         answer_stack += "\n"
         if guess == answer:
             print("Congratulations! You've guessed the word!")
