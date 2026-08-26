@@ -11,14 +11,12 @@ PROJECT_DIR = Path(__file__).resolve().parent
 os.chdir(PROJECT_DIR)
 
 with open(PROJECT_DIR / 'word_list.txt') as file:
-    valid_guesses = [line.strip() for line in file]
-
-list_valid_guesses = sorted(valid_guesses)
+    valid_guesses = set([line.strip() for line in file])
 
 answer = "adieu"
 guessed_words = []
 
-def get_input(list_valid_guesses : list[str], guessed_words : list[str]) -> str:
+def get_input(valid_guesses : set[str], guessed_words : list[str]) -> str:
     valid = False
 
     while not valid:
@@ -26,7 +24,7 @@ def get_input(list_valid_guesses : list[str], guessed_words : list[str]) -> str:
         print(f"Your guess, {guess}")
         if len(guess) != 5:
             print("Too long, or too short")
-        elif guess not in list_valid_guesses:
+        elif guess not in valid_guesses:
             print("Not a valid word")
         elif guess in guessed_words:
             print("Already guessed")
@@ -60,7 +58,7 @@ def main():
     answer_stack = ""
 
     while True:
-        guess = get_input(list_valid_guesses, guessed_words)
+        guess = get_input(valid_guesses, guessed_words)
         answer_stack += check_guess(guess, answer)
         answer_stack += "\n"
         if guess == answer:
