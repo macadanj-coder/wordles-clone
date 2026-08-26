@@ -18,7 +18,7 @@ def get_input(list_valid_guesses : list[str], guessed_words : list[str]) -> str:
     valid = False
 
     while not valid:
-        guess = input(str("Enter your guess: "))
+        guess = input(str("Enter your guess: ")).strip().lower()
         print(f"Your guess, {guess}")
         if len(guess) != 5:
             print("Too long, or too short")
