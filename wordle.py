@@ -7,6 +7,9 @@ GREEN = "🟩"
 BLACK = "⬛"
 YELLOW = "🟨"
 
+WORD_LENGTH = 5
+MAX_GUESSES = 6
+
 PROJECT_DIR = Path(__file__).resolve().parent
 os.chdir(PROJECT_DIR)
 
@@ -23,7 +26,7 @@ def get_input(valid_guesses : set[str], guessed_words : list[str]) -> str:
     while not valid:
         guess = input(str("Enter your guess: ")).strip().lower()
         print(f"Your guess, {guess}")
-        if len(guess) != 5:
+        if len(guess) != WORD_LENGTH:
             print("Too long, or too short")
         elif guess not in valid_guesses:
             print("Not a valid word")
@@ -35,7 +38,7 @@ def get_input(valid_guesses : set[str], guessed_words : list[str]) -> str:
 
 
 def check_guess(guess: str, answer: str) -> str: 
-    marked = [BLACK] * 5
+    marked = [BLACK] * WORD_LENGTH
     remaining = Counter(answer)
     for i, c in enumerate(guess):
         if c == answer[i]:
@@ -68,7 +71,7 @@ def main():
         else:
             print(f"{answer_stack}")
         num_guesses+=1
-        if num_guesses == 6:
+        if num_guesses == MAX_GUESSES:
             print(f"Answer is {answer}")
             print("Better luck next time!")
             break
