@@ -10,11 +10,12 @@ YELLOW = "🟨"
 PROJECT_DIR = Path(__file__).resolve().parent
 os.chdir(PROJECT_DIR)
 
-with open(PROJECT_DIR / 'word_list.txt') as file:
-    valid_guesses = set([line.strip() for line in file])
-
 answer = "adieu"
 guessed_words = []
+
+def load_words(path :str) -> set[str]:
+    with open(PROJECT_DIR / path) as file:
+        return set([line.strip() for line in file])
 
 def get_input(valid_guesses : set[str], guessed_words : list[str]) -> str:
     valid = False
@@ -56,7 +57,7 @@ def main():
     # You can also implement the logic to select a random word and provide feedback on guesses
     num_guesses = 0
     answer_stack = ""
-
+    valid_guesses = load_words("word_list.txt")
     while True:
         guess = get_input(valid_guesses, guessed_words)
         answer_stack += check_guess(guess, answer)
@@ -82,3 +83,7 @@ if __name__ == "__main__":
     except (KeyboardInterrupt, EOFError):
         print("\nExiting...")
         sys.exit(1)
+    except FileNotFoundError as e :
+        print(f"System Error Code: {e.errno}")      # Outputs: 2 (ENOENT)
+        print(f"System Message: {e.strerror}")      # Outputs: No such file or directory
+        print(f"Attempted Path: {e.filename}")      

@@ -3,7 +3,9 @@
 Run from anywhere:  python -m unittest test_wordle
 """
 
+import errno
 import os
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -86,8 +88,68 @@ class WordListTests(unittest.TestCase):
         self.assert_word_file_is_clean(answers)
 
     def test_loaded_guesses_match_the_file(self):
-        words = (PROJECT_DIR / "word_list.txt").read_text(encoding="utf-8").split()
-        self.assertEqual(set(wordle.list_valid_guesses), set(words))
+        path = PROJECT_DIR / "word_list.txt"
+        words = path.read_text(encoding="utf-8").split()
+        self.assertEqual(set(wordle.load_words(path)), set(words))
+
+
+class LoadWordsMissingFileTests(unittest.TestCase):
+    """`load_words` must surface a missing word list as FileNotFoundError.
+
+    The handler at wordle.py:86 prints `errno`, `strerror` and `filename` off
+    the exception, so these tests pin both the exception type and the
+    attributes that message depends on.
+    """
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.tmp_dir = Path(tmp.name)
+
+    def test_missing_file_raises_file_not_found(self):
+        with self.assertRaises(FileNotFoundError):
+            wordle.load_words(self.tmp_dir / "no_such_list.txt")
+
+    def test_exception_carries_the_details_the_handler_prints(self):
+        missing = self.tmp_dir / "no_such_list.txt"
+        with self.assertRaises(FileNotFoundError) as ctx:
+            wordle.load_words(missing)
+        self.assertEqual(ctx.exception.errno, errno.ENOENT)
+        self.assertEqual(Path(ctx.exception.filename), missing)
+        self.assertTrue(ctx.exception.strerror, "strerror must not be empty")
+
+    def test_missing_relative_name_raises_file_not_found(self):
+        # Relative names are joined onto PROJECT_DIR inside load_words.
+        with self.assertRaises(FileNotFoundError):
+            wordle.load_words("definitely_not_a_word_list.txt")
+
+    def test_missing_parent_directory_raises_file_not_found(self):
+        with self.assertRaises(FileNotFoundError):
+            wordle.load_words(self.tmp_dir / "nested" / "word_list.txt")
+
+    def test_string_path_raises_file_not_found(self):
+        with self.assertRaises(FileNotFoundError):
+            wordle.load_words(str(self.tmp_dir / "no_such_list.txt"))
+
+    def test_directory_is_a_different_failure_than_a_missing_file(self):
+        # The path exists, so this must not masquerade as FileNotFoundError.
+        # POSIX raises IsADirectoryError here, Windows raises PermissionError.
+        with self.assertRaises((IsADirectoryError, PermissionError)):
+            wordle.load_words(self.tmp_dir)
+
+    def test_existing_file_loads_without_error(self):
+        # Control: proves the cases above fail because the file is absent, not
+        # because load_words raises for every path handed to it.
+        path = self.tmp_dir / "word_list.txt"
+        path.write_text("crane\nadieu\n", encoding="utf-8")
+        self.assertEqual(wordle.load_words(path), {"adieu", "crane"})
+
+    def test_relative_name_resolves_against_project_dir_not_cwd(self):
+        # Regression for REVIEW.md #4: the real word list must still be found
+        # when the game is launched from another directory.
+        self.addCleanup(os.chdir, os.getcwd())
+        os.chdir(self.tmp_dir)
+        self.assertTrue(wordle.load_words("word_list.txt"))
 
 
 if __name__ == "__main__":
