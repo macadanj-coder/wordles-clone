@@ -1,4 +1,3 @@
-import re
 import sys
 
 with open('word_list.txt') as file:
@@ -19,6 +18,8 @@ def get_input() -> str:
             print("Too long, or too short")
         elif guess not in list_valid_guesses:
             print("Not a valid word")
+        elif guess in guessed_words:
+            print("Already guessed")
         else:
             valid = True
     return guess
@@ -60,6 +61,7 @@ def main():
             game = False
             print(f"Answer is {answer}")
             print("Better luck next time!")
+        guessed_words.append(guess)
     print(f"{answer_stack}")
 
     
