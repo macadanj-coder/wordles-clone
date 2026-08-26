@@ -1,3 +1,5 @@
+import os
+from pathlib import Path
 import sys
 from collections import Counter
 
@@ -5,8 +7,10 @@ GREEN = "🟩"
 BLACK = "⬛"
 YELLOW = "🟨"
 
+PROJECT_DIR = Path(__file__).resolve().parent
+os.chdir(PROJECT_DIR)
 
-with open('word_list.txt') as file:
+with open(PROJECT_DIR / 'word_list.txt') as file:
     valid_guesses = [line.strip() for line in file]
 
 list_valid_guesses = sorted(valid_guesses)
