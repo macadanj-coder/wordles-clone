@@ -1,4 +1,10 @@
+import re
 import sys
+
+with open('word_list.txt') as file:
+    valid_guesses = [line.strip() for line in file]
+
+list_valid_guesses = sorted(valid_guesses)
 
 answer = "adieu"
 guessed_words = []
@@ -11,6 +17,8 @@ def get_input() -> str:
         print(f"Your guess, {guess}")
         if len(guess) != 5:
             print("Too long, or too short")
+        elif guess not in list_valid_guesses:
+            print("Not a valid word")
         else:
             valid = True
     return guess
