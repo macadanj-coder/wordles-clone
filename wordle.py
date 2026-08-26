@@ -43,24 +43,23 @@ def main():
     # Add your game logic here
     # For example, you can prompt the user for input and check their guesses
     # You can also implement the logic to select a random word and provide feedback on guesses
-    game = True
     num_guesses = 0
     answer_stack = ""
 
-    while game:
+    while True:
         guess = get_input()
-        hint_string = check_guess(guess)
-        print(f"{hint_string}")
-        answer_stack += hint_string
+        answer_stack += check_guess(guess)
         answer_stack += "\n"
         if guess == answer:
             print("Congratulations! You've guessed the word!")
-            game = False
+            break
+        else:
+            print(f"{answer_stack}")
         num_guesses+=1
         if num_guesses == 6:
-            game = False
             print(f"Answer is {answer}")
             print("Better luck next time!")
+            break
         guessed_words.append(guess)
     print(f"{answer_stack}")
 
