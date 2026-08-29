@@ -28,14 +28,13 @@ def get_input(valid_guesses : set[str], guessed_words : list[str]) -> str:
     while not valid:
         guess = input("Enter your guess: ").strip().lower()
         if len(guess) != WORD_LENGTH:
-            print("Too long, or too short")
+            print(f"Guesses must {WORD_LENGTH} letters long")
         elif guess not in valid_guesses:
             print("Not a valid word")
         elif guess in guessed_words:
             print("Already guessed")
         else:
             valid = True
-
     print(f"Your guess, {guess}")
     return guess
 
