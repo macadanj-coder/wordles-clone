@@ -76,22 +76,22 @@ def main():
     answer_stack = ""
     valid_guesses = load_words("word_list.txt")
     answer = get_answer(seed=args.seed)
+    answer_stack = []
     while True:
         guess = get_input(valid_guesses, guessed_words)
-        answer_stack += check_guess(guess, answer)
-        answer_stack += "\n"
+        answer_stack.append(check_guess(guess, answer))
         if guess == answer:
             print("Congratulations! You've guessed the word!")
             break
         else:
-            print(f"{answer_stack}")
+            print("\n".join(answer_stack))
         num_guesses+=1
         if num_guesses == MAX_GUESSES:
             print(f"Answer is {answer}")
             print("Better luck next time!")
             break
         guessed_words.append(guess)
-    print(f"{answer_stack}")
+    print("\n".join(answer_stack))
 
     
 
