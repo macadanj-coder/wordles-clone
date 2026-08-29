@@ -3,6 +3,7 @@ from pathlib import Path
 import random
 import sys
 from collections import Counter
+import argparse 
 
 GREEN = "🟩"
 BLACK = "⬛"
@@ -54,17 +55,30 @@ def check_guess(guess: str, answer: str) -> str:
 
 
 
+def get_answer(seed=None):
+    """Get the answer for a given seed without running the game loop."""
+    if seed:
+        random.seed(seed)
+    answer_set = sorted(load_words("wordle-answers-alphabetical.txt"))
+    answers = random.sample(list(answer_set), len(answer_set))
+    return answers[0]
+
+
 def main():
     print("Welcome to Wordle!")
     # Add your game logic here
     # For example, you can prompt the user for input and check their guesses
     # You can also implement the logic to select a random word and provide feedback on guesses
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--seed", help="determines the seed for randomnly shuffling the set of valid answers.")
+    args = parser.parse_args()
+    if args.seed:
+        print(f"seed is {args.seed}")
+        random.seed(args.seed)
     num_guesses = 0
     answer_stack = ""
     valid_guesses = load_words("word_list.txt")
-    answer_set = load_words("wordle-answers-alphabetical.txt")
-    answers = random.sample(list(answer_set), len(answer_set))
-    answer = answers[0]
+    answer = get_answer(seed=args.seed)
     while True:
         guess = get_input(valid_guesses, guessed_words)
         answer_stack += check_guess(guess, answer)

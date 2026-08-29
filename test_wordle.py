@@ -152,5 +152,26 @@ class LoadWordsMissingFileTests(unittest.TestCase):
         self.assertTrue(wordle.load_words("word_list.txt"))
 
 
+class TestSeeds(unittest.TestCase):
+    def test_same_seed(self):
+        """Same seed should produce the same answer."""
+        answer1 = wordle.get_answer(seed="42")
+        answer2 = wordle.get_answer(seed="42")
+        self.assertEqual(answer1, answer2)
+
+    def test_different_seeds_produce_different_answers(self):
+        """Different seeds should produce different answers (most of the time)."""
+        answer1 = wordle.get_answer(seed="42")
+        answer2 = wordle.get_answer(seed="123")
+        # Very unlikely for different seeds to produce the same answer
+        self.assertNotEqual(answer1, answer2)
+
+    def test_seed_consistency_across_multiple_runs(self):
+        """Verify seed consistency with multiple runs."""
+        seed = "999"
+        expected = wordle.get_answer(seed=seed)
+        for _ in range(3):
+            self.assertEqual(wordle.get_answer(seed=seed), expected)
+
 if __name__ == "__main__":
     unittest.main()
