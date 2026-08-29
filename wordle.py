@@ -63,8 +63,6 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", help="determines the seed for randomnly shuffling the set of valid answers.")
     args = parser.parse_args()
-    if args.seed is not None:
-        print(f"seed is {args.seed}")
     valid_guesses = load_words(GUESSES_FILE)
     answer = get_answer(load_words(ANSWERS_FILE), seed=args.seed)
     play(answer, valid_guesses)
@@ -73,6 +71,7 @@ def main():
 if __name__ == "__main__":
     try:
         main()
+        sys.exit(0)
     except (KeyboardInterrupt, EOFError):
         print("\nExiting...")
         sys.exit(1)
