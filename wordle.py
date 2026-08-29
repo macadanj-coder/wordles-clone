@@ -80,18 +80,16 @@ def main():
     while True:
         guess = get_input(valid_guesses, guessed_words)
         answer_stack.append(check_guess(guess, answer))
+        print("\n".join(answer_stack))
         if guess == answer:
             print("Congratulations! You've guessed the word!")
             break
-        else:
-            print("\n".join(answer_stack))
         num_guesses+=1
         if num_guesses == MAX_GUESSES:
             print(f"Answer is {answer}")
             print("Better luck next time!")
             break
         guessed_words.append(guess)
-    print("\n".join(answer_stack))
 
     
 
