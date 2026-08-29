@@ -35,7 +35,8 @@ def get_input(valid_guesses : set[str], guessed_words : list[str]) -> str:
             print("Already guessed")
         else:
             valid = True
-        print(f"Your guess, {guess}")
+
+    print(f"Your guess, {guess}")
     return guess
 
 
