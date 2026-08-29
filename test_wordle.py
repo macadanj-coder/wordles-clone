@@ -3,17 +3,17 @@
 Run from anywhere:  python -m unittest test_wordle
 """
 
+import contextlib
 import errno
+import io
 import os
+import random
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
-# wordle.py opens 'word_list.txt' at import time relative to the CWD (REVIEW.md
-# #4/#7). Until that is fixed, anchor the CWD to the project directory so these
-# tests run from any working directory.
 PROJECT_DIR = Path(__file__).resolve().parent
-os.chdir(PROJECT_DIR)
 
 import wordle
 from wordle import BLACK, GREEN, YELLOW, check_guess
@@ -79,13 +79,21 @@ class WordListTests(unittest.TestCase):
                 self.assertEqual(word, word.lower(), "must be lowercase")
 
     def test_word_list_entries_are_five_lowercase_letters(self):
-        self.assert_word_file_is_clean(PROJECT_DIR / "word_list.txt")
+        self.assert_word_file_is_clean(PROJECT_DIR / wordle.GUESSES_FILE)
 
     def test_answers_entries_are_five_lowercase_letters(self):
-        answers = PROJECT_DIR / "answers.txt"
-        if not answers.exists():
-            self.skipTest("answers.txt does not exist yet (REVIEW.md #10)")
-        self.assert_word_file_is_clean(answers)
+        self.assert_word_file_is_clean(PROJECT_DIR / wordle.ANSWERS_FILE)
+
+    def test_every_answer_is_a_guessable_word(self):
+        # REVIEW.md R16: an answer missing from the guess list would be
+        # unguessable — the player would be told "Not a valid word" for typing
+        # the correct answer.
+        answers = wordle.load_words(wordle.ANSWERS_FILE)
+        guesses = wordle.load_words(wordle.GUESSES_FILE)
+        self.assertTrue(
+            answers <= guesses,
+            f"answers missing from the guess list: {sorted(answers - guesses)[:10]}",
+        )
 
     def test_loaded_guesses_match_the_file(self):
         path = PROJECT_DIR / "word_list.txt"
@@ -96,9 +104,8 @@ class WordListTests(unittest.TestCase):
 class LoadWordsMissingFileTests(unittest.TestCase):
     """`load_words` must surface a missing word list as FileNotFoundError.
 
-    The handler at wordle.py:86 prints `errno`, `strerror` and `filename` off
-    the exception, so these tests pin both the exception type and the
-    attributes that message depends on.
+    The handler prints `e.filename`, so these tests pin both the exception type
+    and the attributes that message depends on.
     """
 
     def setUp(self):
@@ -153,25 +160,145 @@ class LoadWordsMissingFileTests(unittest.TestCase):
 
 
 class TestSeeds(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # Load once and pass it in, so no test pays for re-reading the file.
+        cls.answers = wordle.load_words(wordle.ANSWERS_FILE)
+
     def test_same_seed(self):
         """Same seed should produce the same answer."""
-        answer1 = wordle.get_answer(seed="42")
-        answer2 = wordle.get_answer(seed="42")
+        answer1 = wordle.get_answer(self.answers, seed="42")
+        answer2 = wordle.get_answer(self.answers, seed="42")
         self.assertEqual(answer1, answer2)
 
     def test_different_seeds_produce_different_answers(self):
         """Different seeds should produce different answers (most of the time)."""
-        answer1 = wordle.get_answer(seed="42")
-        answer2 = wordle.get_answer(seed="123")
+        answer1 = wordle.get_answer(self.answers, seed="42")
+        answer2 = wordle.get_answer(self.answers, seed="123")
         # Very unlikely for different seeds to produce the same answer
         self.assertNotEqual(answer1, answer2)
 
     def test_seed_consistency_across_multiple_runs(self):
         """Verify seed consistency with multiple runs."""
         seed = "999"
-        expected = wordle.get_answer(seed=seed)
+        expected = wordle.get_answer(self.answers, seed=seed)
         for _ in range(3):
-            self.assertEqual(wordle.get_answer(seed=seed), expected)
+            self.assertEqual(wordle.get_answer(self.answers, seed=seed), expected)
+
+    def test_seed_zero_is_honoured(self):
+        # Regression for REVIEW.md R5: `if seed:` treated 0 as "no seed".
+        first = wordle.get_answer(self.answers, seed=0)
+        for _ in range(3):
+            self.assertEqual(wordle.get_answer(self.answers, seed=0), first)
+
+    def test_does_not_disturb_the_global_random_stream(self):
+        # Regression for REVIEW.md R6: get_answer used to call random.seed().
+        random.seed(1234)
+        expected = [random.random() for _ in range(3)]
+        random.seed(1234)
+        wordle.get_answer(self.answers, seed="42")
+        self.assertEqual([random.random() for _ in range(3)], expected)
+
+    def test_default_answers_come_from_the_bundled_list(self):
+        self.assertIn(wordle.get_answer(seed="42"), self.answers)
+
+
+class PlayLoopTests(unittest.TestCase):
+    """REVIEW.md R15: the game loop itself, with input injected."""
+
+    VALID = {"adieu", "crane", "spell", "level", "sport", "kebab", "abbey"}
+
+    def play(self, answer, guesses):
+        """Run one game on a scripted guess sequence; return (rows, stdout)."""
+        scripted = iter(guesses)
+        self.calls = 0
+
+        def read_guess(valid_guesses, guessed_words):
+            self.calls += 1
+            return next(scripted)
+
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            rows = wordle.play(answer, self.VALID, read_guess)
+        return rows, out.getvalue()
+
+    def test_win_on_the_sixth_guess_does_not_print_the_loss_message(self):
+        # Regression for REVIEW.md #2.
+        wrong = ["crane", "spell", "level", "sport", "kebab"]
+        rows, out = self.play("adieu", wrong + ["adieu"])
+        self.assertEqual(len(rows), 6)
+        self.assertEqual(rows[-1], GREEN * 5)
+        self.assertIn("Congratulations!", out)
+        self.assertNotIn("Better luck next time!", out)
+        self.assertNotIn("Answer is", out)
+
+    def test_loss_prints_the_grid_exactly_once_at_the_end(self):
+        # Regression for REVIEW.md R1: the grid used to be printed twice.
+        guesses = ["crane", "spell", "level", "sport", "kebab", "abbey"]
+        rows, out = self.play("adieu", guesses)
+        self.assertEqual(len(rows), 6)
+        grid = "\n".join(rows)
+        self.assertEqual(out.count(grid), 1)
+        self.assertIn("Answer is adieu", out)
+        self.assertIn("Better luck next time!", out)
+        self.assertNotIn("Congratulations!", out)
+
+    def test_win_stops_reading_guesses(self):
+        rows, out = self.play("adieu", ["crane", "spell", "adieu", "sport"])
+        self.assertEqual(self.calls, 3)
+        self.assertEqual(len(rows), 3)
+        self.assertIn("Congratulations!", out)
+
+    def test_guessed_words_are_local_to_each_game(self):
+        # Regression for REVIEW.md R3: history used to leak between games via a
+        # module global, so a second game rejected the first game's guesses.
+        seen = []
+
+        def read_guess(valid_guesses, guessed_words):
+            seen.append(list(guessed_words))
+            return "adieu"
+
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            wordle.play("adieu", self.VALID, read_guess)
+            wordle.play("adieu", self.VALID, read_guess)
+        self.assertEqual(seen, [[], []])
+
+
+class GetInputTests(unittest.TestCase):
+    """Validation re-prompts without consuming a guess (REVIEW.md #12, R10)."""
+
+    VALID = {"adieu", "crane"}
+
+    def get_input(self, typed, guessed_words=()):
+        scripted = iter(typed)
+        out = io.StringIO()
+        with mock.patch("builtins.input", lambda _prompt="": next(scripted)):
+            with contextlib.redirect_stdout(out):
+                guess = wordle.get_input(self.VALID, list(guessed_words))
+        return guess, out.getvalue()
+
+    def test_rejected_then_accepted(self):
+        guess, out = self.get_input(["toolong", "zzzzz", "crane", "adieu"])
+        self.assertEqual(guess, "crane")
+        self.assertIn(f"Guesses must be {wordle.WORD_LENGTH} letters long", out)
+        self.assertIn("Not a valid word", out)
+
+    def test_already_guessed_is_rejected(self):
+        guess, out = self.get_input(["crane", "adieu"], guessed_words=["crane"])
+        self.assertEqual(guess, "adieu")
+        self.assertIn("Already guessed", out)
+
+    def test_input_is_normalized(self):
+        guess, _ = self.get_input(["  CrAnE \n"])
+        self.assertEqual(guess, "crane")
+
+    def test_only_the_accepted_guess_is_echoed(self):
+        # REVIEW.md #12: rejected input must not be echoed back.
+        _, out = self.get_input(["zzzzz", "crane"])
+        self.assertNotIn("Your guess, zzzzz", out)
+        self.assertIn("Your guess, crane", out)
+
 
 if __name__ == "__main__":
     unittest.main()
