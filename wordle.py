@@ -62,6 +62,7 @@ def main():
     print("Welcome to Wordle!")
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", help="determines the seed for randomnly shuffling the set of valid answers.")
+    parser.add_argument("--tui", help="hands off to Textual app")
     args = parser.parse_args()
     valid_guesses = load_words(GUESSES_FILE)
     answer = get_answer(load_words(ANSWERS_FILE), seed=args.seed)
