@@ -1,0 +1,15 @@
+[project]
+name = "wordles-clone"
+version = "0.1.0"
+description = "A Wordle clone with a CLI and a Textual TUI front-end."
+requires-python = ">=3.10"
+dependencies = ["textual>=8.2"]
+
+[dependency-groups]
+dev = ["textual-dev>=1.7"]
+
+[tool.uv]
+# Flat script repo: wordle.py / game.py / tui.py are run directly, not installed
+# as a distribution. Without this, setuptools' flat-layout discovery aborts on
+# the multiple top-level modules.
+package = false
