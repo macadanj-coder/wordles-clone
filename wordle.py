@@ -26,8 +26,7 @@ def get_input(valid_guesses : set[str], guessed_words : list[str]) -> str:
     valid = False
 
     while not valid:
-        guess = input(str("Enter your guess: ")).strip().lower()
-        print(f"Your guess, {guess}")
+        guess = input("Enter your guess: ").strip().lower()
         if len(guess) != WORD_LENGTH:
             print("Too long, or too short")
         elif guess not in valid_guesses:
@@ -36,6 +35,7 @@ def get_input(valid_guesses : set[str], guessed_words : list[str]) -> str:
             print("Already guessed")
         else:
             valid = True
+        print(f"Your guess, {guess}")
     return guess
 
 
@@ -66,9 +66,6 @@ def get_answer(seed=None):
 
 def main():
     print("Welcome to Wordle!")
-    # Add your game logic here
-    # For example, you can prompt the user for input and check their guesses
-    # You can also implement the logic to select a random word and provide feedback on guesses
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", help="determines the seed for randomnly shuffling the set of valid answers.")
     args = parser.parse_args()
