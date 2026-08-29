@@ -228,7 +228,7 @@ class PlayLoopTests(unittest.TestCase):
         rows, out = self.play("adieu", wrong + ["adieu"])
         self.assertEqual(len(rows), 6)
         self.assertEqual(rows[-1], GREEN * 5)
-        self.assertIn("Congratulations!", out)
+        self.assertIn("Splendid!", out)
         self.assertNotIn("Better luck next time!", out)
         self.assertNotIn("Answer is", out)
 
@@ -241,13 +241,13 @@ class PlayLoopTests(unittest.TestCase):
         self.assertEqual(out.count(grid), 1)
         self.assertIn("Answer is adieu", out)
         self.assertIn("Better luck next time!", out)
-        self.assertNotIn("Congratulations!", out)
+        self.assertNotIn("Splendid!", out)
 
     def test_win_stops_reading_guesses(self):
         rows, out = self.play("adieu", ["crane", "spell", "adieu", "sport"])
         self.assertEqual(self.calls, 3)
         self.assertEqual(len(rows), 3)
-        self.assertIn("Congratulations!", out)
+        self.assertIn("Splendid!", out)
 
     def test_guessed_words_are_local_to_each_game(self):
         # Regression for REVIEW.md R3: history used to leak between games via a

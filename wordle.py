@@ -3,69 +3,38 @@ import random
 import sys
 from collections import Counter
 import argparse
-
-GREEN = "🟩"
-BLACK = "⬛"
-YELLOW = "🟨"
-
-WORD_LENGTH = 5
-MAX_GUESSES = 6
-
-ANSWERS_FILE = "answers.txt"
-GUESSES_FILE = "word_list.txt"
-
-PROJECT_DIR = Path(__file__).resolve().parent
-
-
-def load_words(path: str | Path) -> set[str]:
-    with open(PROJECT_DIR / path) as file:
-        return {line.strip() for line in file}
-
+from game import (
+    ANSWERS_FILE,
+    BLACK,
+    GREEN,
+    GUESSES_FILE,
+    MAX_GUESSES,
+    PROJECT_DIR,
+    WORD_LENGTH,
+    YELLOW,
+    Game,
+    check_guess,
+    get_answer,
+    load_words,
+)
 
 def get_input(valid_guesses: set[str], guessed_words: list[str]) -> str:
-    valid = False
+    """Re-prompt until the player types a playable guess, then echo it.
 
-    while not valid:
+    Validation lives on `Game`, so the CLI and the TUI share one set of
+    messages; the throwaway instance is just a carrier for the rules.
+    """
+    validator = Game("", valid_guesses)
+    validator.guesses = list(guessed_words)
+
+    while True:
         guess = input("Enter your guess: ").strip().lower()
-        if len(guess) != WORD_LENGTH:
-            print(f"Guesses must be {WORD_LENGTH} letters long")
-        elif guess not in valid_guesses:
-            print("Not a valid word")
-        elif guess in guessed_words:
-            print("Already guessed")
-        else:
-            valid = True
+        error = validator.validate(guess)
+        if error is None:
+            break
+        print(error)
     print(f"Your guess, {guess}")
     return guess
-
-
-def check_guess(guess: str, answer: str) -> str:
-    marked = [BLACK] * WORD_LENGTH
-    remaining = Counter(answer)
-    for i, c in enumerate(guess):
-        if c == answer[i]:
-            marked[i] = GREEN
-            remaining[c] -= 1
-
-    for i, c in enumerate(guess):
-        if marked[i] == BLACK and remaining[c] > 0:
-            marked[i] = YELLOW
-            remaining[c] -= 1
-    return "".join(marked)
-
-
-def get_answer(answers: set[str] | None = None, seed: str | int | None = None) -> str:
-    """Pick the answer for a given seed without running the game loop.
-
-    `answers` defaults to the bundled answer list; pass an already-loaded set to
-    avoid re-reading the file. Seeding uses a private RNG, so callers' own
-    `random` streams are untouched.
-    """
-    if answers is None:
-        answers = load_words(ANSWERS_FILE)
-    rng = random.Random(seed)
-    return rng.choice(sorted(answers))
-
 
 def play(answer: str, valid_guesses: set[str], read_guess=get_input) -> list[str]:
     """Run one game and return the grid rows, newest last.
@@ -74,20 +43,19 @@ def play(answer: str, valid_guesses: set[str], read_guess=get_input) -> list[str
     can be driven by tests without touching stdin.
     """
     guessed_words: list[str] = []
-    rows: list[str] = []
+    game = Game(answer, valid_guesses)
 
-    for num_guesses in range(1, MAX_GUESSES + 1):
+    while not game.is_over:
         guess = read_guess(valid_guesses, guessed_words)
-        rows.append(check_guess(guess, answer))
-        print("\n".join(rows))
-        if guess == answer:
-            print("Congratulations! You've guessed the word!")
-            break
-        guessed_words.append(guess)
-        if num_guesses == MAX_GUESSES:
-            print(f"Answer is {answer}")
-            print("Better luck next time!")
-    return rows
+        game.submit(guess)
+        print("\n".join(game.rows))
+
+    if game.won:
+        print("Splendid!")
+    else:
+        print(f"Answer is {answer}")
+        print("Better luck next time!")
+    return game.rows
 
 
 def main():
