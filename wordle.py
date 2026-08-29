@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+import random
 import sys
 from collections import Counter
 
@@ -61,6 +62,9 @@ def main():
     num_guesses = 0
     answer_stack = ""
     valid_guesses = load_words("word_list.txt")
+    answer_set = load_words("wordle-answers-alphabetical.txt")
+    answers = random.sample(list(answer_set), len(answer_set))
+    answer = answers[0]
     while True:
         guess = get_input(valid_guesses, guessed_words)
         answer_stack += check_guess(guess, answer)
