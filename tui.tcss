@@ -1,0 +1,38 @@
+Board {
+    align: center middle;
+    height: 1fr;
+}
+
+GuessRow {
+    height: auto;
+    width: auto;
+}
+
+Tile {
+    width: 7;
+    height: 3;
+    margin: 0 1 1 0;
+    content-align: center middle;
+    text-style: bold;
+    border: tall $panel;
+    background: $surface;
+}
+
+Tile.-filled {
+    border: tall $foreground 50%;
+}
+
+Tile.-correct {
+    background: green;
+    border: tall green;
+}
+
+Tile.-present {
+    background: yellow;
+    border: tall yellow;
+}
+
+Tile.-absent {
+    background: $panel-darken-2;
+    border: tall $panel-darken-2;
+}
