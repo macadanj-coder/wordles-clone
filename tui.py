@@ -26,6 +26,9 @@ class GuessRow(Horizontal):
     def compose(self) -> ComposeResult:
         self._tiles = [Tile() for _ in range(self.TILES)]
         yield from self._tiles
+    @property
+    def filled(self) -> int:
+        return sum(1 for tile in self.tiles if tile.state == "filled")
 
 
 class Keyboard(Vertical):
