@@ -3,7 +3,7 @@ from textual.containers import Vertical, Horizontal
 from textual.widgets import Footer, Header, Static
 from textual.reactive import reactive
 from textual import events
-
+from textual.css.scalar import ScalarOffset
 
 class Tile(Static):
     """Tile, can be filled or empty"""
@@ -18,14 +18,16 @@ class Tile(Static):
     def render(self) -> str:
         return self.letter or " "
 
-
 class GuessRow(Horizontal):
     """Grid representation of tiles"""
     TILES = 5
+    SHAKE = (2, -2, 1, -1, 0)   # x offsets in terminal cells
+    _shaking = False
 
     def compose(self) -> ComposeResult:
         self._tiles = [Tile() for _ in range(self.TILES)]
         yield from self._tiles
+
     @property
     def filled(self) -> int:
         return sum(1 for tile in self._tiles if tile.state == "filled")
@@ -41,11 +43,27 @@ class GuessRow(Horizontal):
     def pop_letter(self):
         if self.filled == 0:
             return False
-        tile = self._tiles[self.filled]
+        tile = self._tiles[self.filled-1]
         tile.letter = None
         tile.state = "empty"
         return True
 
+    def shake(self) -> None:
+        if self._shaking:          # pressing Enter repeatedly won't stack shakes
+            return
+        self._shaking = True
+        self._shake_step(0)
+
+    def _shake_step(self, i: int) -> None:
+        if i == len(self.SHAKE):
+            self._shaking = False
+            return
+        self.styles.animate(
+            "offset",
+            value=ScalarOffset.from_offset((self.SHAKE[i], 0)),
+            duration=0.05,
+            on_complete=lambda: self._shake_step(i + 1),
+        )
 
 class Keyboard(Vertical):
     """A repesentation of the keyboard."""
@@ -101,6 +119,7 @@ class Wordle(App):
 
     def submit(self) -> None:
         if self.row.filled < GuessRow.TILES:
+            self.row.shake()
             return
         self.current_row += 1
 
