@@ -12,6 +12,7 @@ from game import (ANSWERS_FILE, BLACK, GREEN, GUESSES_FILE, YELLOW, Game,
                   get_answer, load_words)
 
 MARK_STATES = {GREEN: "correct", YELLOW: "present", BLACK: "absent"}
+RANK = {"unused": 0, "absent": 1, "present": 2, "correct": 3}
 
 class Tile(Static):
     """Tile, can be filled or empty"""
@@ -92,8 +93,45 @@ class GuessRow(Horizontal):
             on_complete=lambda: self._shake_step(i + 1),
         )
 
+class Key(Static):
+    """One on-screen key. Same state classes as Tile, minus the typing ones."""
+    STATES = {"unused", "correct", "present", "absent"}
+    state: reactive[str] = reactive("unused")
+
+    def __init__(self, value: str, label: str | None = None) -> None:
+        super().__init__((label or value).upper())
+        self.value = value          # what the key sends: "a".."z", "enter", "backspace"
+        self.set_class(len(value) > 1, "-wide")
+
+    def watch_state(self, old: str, new: str) -> None:
+        for name in self.STATES:
+            self.set_class(name == new, f"-{name}")
+
+
+
 class Keyboard(Vertical):
     """A repesentation of the keyboard."""
+    ROWS = ("qwertyuiop", "asdfghjkl", "zxcvbnm")
+
+    def compose(self) -> ComposeResult:
+        self._keys: dict[str, Key] = {}
+        for i, letters in enumerate(self.ROWS):
+            with Horizontal(classes="key-row"):
+                if i == len(self.ROWS) - 1:
+                    yield Key("enter", "⏎")
+                for c in letters:
+                    self._keys[c] = key = Key(c)
+                    yield key
+                if i == len(self.ROWS) - 1:
+                    yield Key("backspace", "⌫")
+
+    def reveal(self, guess: str, marks: str) -> None:
+        for letter, mark in zip(guess, marks):
+            key = self._keys[letter]
+            new = MARK_STATES[mark]
+            if RANK[new] > RANK[key.state]:
+                key.state = new
+
 class Board(Vertical):
     """A grid to represent the guesses entered"""
     GUESSES = 6
@@ -124,6 +162,7 @@ class Wordle(App):
         """Create child widgets for the app."""
         yield Header()
         yield Board()
+        yield Keyboard()
         yield Footer()
 
     def action_toggle_dark(self) -> None:
@@ -135,6 +174,10 @@ class Wordle(App):
     @property
     def row(self) -> GuessRow:
         return self.query(GuessRow)[self.current_row]
+
+    @property
+    def keyboard(self) -> Keyboard:
+        return self.query_one(Keyboard)
 
     def on_key(self, event: events.Key) -> None:
         if self.locked or self.game is None or self.game.is_over:
@@ -157,14 +200,15 @@ class Wordle(App):
             self.row.shake()
             return
         self.locked = True  # lock now, not in the worker, so no keypress slips in before it starts
-        self.run_reveal(self.row, self.game.submit(guess))
+        self.run_reveal(self.row, self.keyboard, guess, self.game.submit(guess))
 
     @work(exclusive=True)
-    async def run_reveal(self, row: GuessRow, marks: str) -> None:
+    async def run_reveal(self, row: GuessRow, keyboard: Keyboard, guess: str, marks: str) -> None:
         try:
             await row.reveal(marks)
         finally:
             self.locked = False
+        keyboard.reveal(guess, marks)
         if self.game.won:
             self.notify("Splendid!")
         elif self.game.is_over:

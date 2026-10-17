@@ -36,3 +36,41 @@ Tile.-absent {
     background: $panel-darken-2;
     border: tall $panel-darken-2;
 }
+
+Keyboard {
+    height: auto;
+    align: center top;
+    margin-bottom: 1;
+}
+
+.key-row {
+    height: auto;
+    width: 100%;
+    align: center top;
+    margin-bottom: 1;
+}
+
+Key {
+    width: 5;
+    height: 3;
+    margin: 0 1 0 0;
+    content-align: center middle;
+    text-style: bold;
+    background: $panel-lighten-2;
+}
+
+Key.-wide {
+    width: 8;
+}
+
+Key.-correct {
+    background: green;
+}
+
+Key.-present {
+    background: yellow;
+}
+
+Key.-absent {
+    background: $panel-darken-2;
+}
