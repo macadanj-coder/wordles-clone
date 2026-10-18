@@ -6,6 +6,7 @@ from textual.containers import Vertical, Horizontal
 from textual.widgets import Footer, Header, Static
 from textual.reactive import reactive
 from textual import events
+from textual.message import Message
 from textual.css.scalar import ScalarOffset
 
 from game import (ANSWERS_FILE, BLACK, GREEN, GUESSES_FILE, YELLOW, Game,
@@ -98,6 +99,13 @@ class Key(Static):
     STATES = {"unused", "correct", "present", "absent"}
     state: reactive[str] = reactive("unused")
 
+    class Pressed(Message):
+        """Posted when the key is clicked; bubbles up to the app."""
+
+        def __init__(self, value: str) -> None:
+            super().__init__()
+            self.value = value
+
     def __init__(self, value: str, label: str | None = None) -> None:
         super().__init__((label or value).upper())
         self.value = value          # what the key sends: "a".."z", "enter", "backspace"
@@ -106,6 +114,9 @@ class Key(Static):
     def watch_state(self, old: str, new: str) -> None:
         for name in self.STATES:
             self.set_class(name == new, f"-{name}")
+
+    def on_click(self) -> None:
+        self.post_message(self.Pressed(self.value))
 
 
 
@@ -180,17 +191,28 @@ class Wordle(App):
         return self.query_one(Keyboard)
 
     def on_key(self, event: events.Key) -> None:
-        if self.locked or self.game is None or self.game.is_over:
-            return
-        if event.key == "backspace":
-            self.row.pop_letter()
-        if event.key == "enter":
-            self.submit()
-        if event.is_printable and event.key.isalpha():
-            self.row.set_letter(event.character)
+        if event.key in ("backspace", "enter"):
+            value = event.key
+        elif event.is_printable and event.key.isalpha():
+            value = event.character.lower()
         else:
             return
+        self.handle_input(value)
         event.stop()
+
+    def on_key_pressed(self, message: Key.Pressed) -> None:
+        self.handle_input(message.value)
+
+    def handle_input(self, value: str) -> None:
+        """Shared by physical typing and on-screen clicks."""
+        if self.locked or self.game is None or self.game.is_over:
+            return
+        if value == "backspace":
+            self.row.pop_letter()
+        elif value == "enter":
+            self.submit()
+        else:
+            self.row.set_letter(value)
 
     def submit(self) -> None:
         guess = self.row.word
